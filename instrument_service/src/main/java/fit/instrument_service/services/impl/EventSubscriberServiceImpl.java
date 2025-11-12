@@ -7,9 +7,11 @@
 package fit.instrument_service.services.impl;
 
 import fit.instrument_service.configs.RabbitMQConfig;
+import fit.instrument_service.events.ConfigurationCreatedEvent;
 import fit.instrument_service.events.ConfigurationDeletedEvent;
 import fit.instrument_service.events.InstrumentActivatedEvent;
 import fit.instrument_service.events.InstrumentDeactivatedEvent;
+import fit.instrument_service.services.EventSubscriberService;
 import fit.instrument_service.services.InstrumentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,9 +27,10 @@ import org.springframework.stereotype.Service;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class EventSubscriberServiceImpl {
+public class EventSubscriberServiceImpl implements EventSubscriberService {
     private final InstrumentService instrumentService;
 
+    @Override
     @RabbitListener(queues = RabbitMQConfig.INSTRUMENT_ACTIVATED_QUEUE)
     public void handleInstrumentActivated(InstrumentActivatedEvent event) {
         try {
@@ -39,6 +42,7 @@ public class EventSubscriberServiceImpl {
         }
     }
 
+    @Override
     @RabbitListener(queues = RabbitMQConfig.INSTRUMENT_DEACTIVATED_QUEUE)
     public void handleInstrumentDeactivated(InstrumentDeactivatedEvent event) {
         try {
@@ -47,6 +51,18 @@ public class EventSubscriberServiceImpl {
         } catch (Exception e) {
             log.error("Error processing message from queue [{}]. Error: {}",
                     RabbitMQConfig.INSTRUMENT_DEACTIVATED_QUEUE, e.getMessage());
+        }
+    }
+
+    @Override
+    @RabbitListener(queues = RabbitMQConfig.CONFIGURATION_CREATED_QUEUE)
+    public void handleConfigurationCreated(ConfigurationCreatedEvent event) {
+        try {
+            log.info("Received event from queue [{}]: {}", RabbitMQConfig.CONFIGURATION_CREATED_QUEUE, event.getId());
+            instrumentService.handleConfigurationCreation(event);
+        } catch (Exception e) {
+            log.error("Error processing message from queue [{}]. Error: {}",
+                    RabbitMQConfig.CONFIGURATION_CREATED_QUEUE, e.getMessage());
         }
     }
 

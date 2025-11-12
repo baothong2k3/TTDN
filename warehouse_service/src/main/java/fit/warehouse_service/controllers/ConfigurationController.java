@@ -125,7 +125,7 @@ public class ConfigurationController {
      * Chỉ người dùng có quyền ADMIN mới có thể thực hiện.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteConfiguration(@PathVariable String id) {
         configurationService.deleteConfiguration(id);
 
@@ -133,6 +133,8 @@ public class ConfigurationController {
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("Configuration deleted successfully")
+                .timestamp(LocalDateTime.now())
+                .status(200)
                 .build());
     }
 }

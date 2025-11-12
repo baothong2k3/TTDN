@@ -7,6 +7,7 @@
 package fit.warehouse_service.services.impl;
 
 import fit.warehouse_service.configs.RabbitMQConfig;
+import fit.warehouse_service.events.ConfigurationCreatedEvent;
 import fit.warehouse_service.events.ConfigurationDeletedEvent;
 import fit.warehouse_service.events.InstrumentActivatedEvent;
 import fit.warehouse_service.events.InstrumentDeactivatedEvent;
@@ -61,6 +62,23 @@ public class EventPublisherServiceImpl implements EventPublisherService {
             );
         } catch (Exception e) {
             log.error("Failed to publish InstrumentDeactivatedEvent for id: {}. Error: {}",
+                    event.getId(), e.getMessage());
+        }
+    }
+
+    @Override
+    public void publishConfigurationCreated(ConfigurationCreatedEvent event) {
+        try {
+            log.info("Publishing ConfigurationCreatedEvent for id: {} | RoutingKey: {}",
+                    event.getId(), RabbitMQConfig.CONFIGURATION_CREATED_ROUTING_KEY);
+
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.INSTRUMENT_EXCHANGE,
+                    RabbitMQConfig.CONFIGURATION_CREATED_ROUTING_KEY,
+                    event
+            );
+        } catch (Exception e) {
+            log.error("Failed to publish ConfigurationCreatedEvent for id: {}. Error: {}",
                     event.getId(), e.getMessage());
         }
     }

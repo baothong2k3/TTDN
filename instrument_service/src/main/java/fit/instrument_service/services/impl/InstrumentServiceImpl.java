@@ -12,6 +12,7 @@ import fit.instrument_service.dtos.request.ModifyReagentStatusRequest;
 import fit.instrument_service.dtos.response.InstrumentReagentResponse;
 import fit.instrument_service.dtos.response.InstrumentResponse;
 import fit.instrument_service.embedded.Vendor;
+import fit.instrument_service.entities.Configuration;
 import fit.instrument_service.entities.Instrument;
 import fit.instrument_service.entities.InstrumentModeLog;
 import fit.instrument_service.entities.InstrumentReagent;
@@ -19,6 +20,7 @@ import fit.instrument_service.enums.AuditAction;
 import fit.instrument_service.enums.InstrumentMode;
 import fit.instrument_service.enums.InstrumentStatus;
 import fit.instrument_service.enums.ReagentStatus;
+import fit.instrument_service.events.ConfigurationCreatedEvent;
 import fit.instrument_service.events.ConfigurationDeletedEvent;
 import fit.instrument_service.events.InstrumentActivatedEvent;
 import fit.instrument_service.events.InstrumentDeactivatedEvent;
@@ -37,6 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -289,6 +292,38 @@ public class InstrumentServiceImpl implements InstrumentService {
 
         // 6. Trả về DTO Response
         return InstrumentMapper.toReagentResponse(updatedReagent);
+    }
+
+    @Override
+    public void handleConfigurationCreation(ConfigurationCreatedEvent event) { // <-- Thêm
+        String configId = event.getId();
+        log.info("Handling ConfigurationCreatedEvent for ID: {}", configId);
+
+        // Kiểm tra xem ID đã tồn tại chưa
+        if (configurationRepository.existsById(configId)) {
+            log.warn("Configuration (sync) with ID: {} already exists. Skipping creation.", configId);
+            return;
+        }
+
+        // --- Xử lý Mapping ---
+        // Do model 2 bên khác nhau, ta map các trường của warehouse_service
+        // vào trường 'settings' của instrument_service.
+        Map<String, Object> settings = new HashMap<>();
+        settings.put("dataType", event.getDataType());
+        settings.put("value", event.getValue());
+        settings.put("description", event.getDescription());
+
+        // Tạo entity Configuration của instrument_service
+        Configuration newConfig = new Configuration();
+        newConfig.setId(event.getId());
+        newConfig.setName(event.getName());
+        newConfig.setSettings(settings);
+
+        // Các trường (configType, instrumentModel, v.v.) không có trong sự kiện
+        // sẽ được giữ là null (mặc định).
+
+        configurationRepository.save(newConfig);
+        log.info("Successfully created configuration (sync) with ID: {}", configId);
     }
 
     @Override

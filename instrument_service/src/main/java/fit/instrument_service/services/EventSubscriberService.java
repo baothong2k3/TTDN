@@ -6,6 +6,7 @@
 
 package fit.instrument_service.services;
 
+import fit.instrument_service.events.ConfigurationCreatedEvent;
 import fit.instrument_service.events.ConfigurationDeletedEvent;
 import fit.instrument_service.events.InstrumentActivatedEvent;
 import fit.instrument_service.events.InstrumentDeactivatedEvent;
@@ -30,6 +31,13 @@ public interface EventSubscriberService {
      * @param event Sự kiện vô hiệu hóa thiết bị
      */
     void handleInstrumentDeactivated(InstrumentDeactivatedEvent event);
+
+    /**
+     * Xử lý sự kiện khi một cấu hình được tạo.
+     *
+     * @param event Sự kiện tạo cấu hình
+     */
+    void handleConfigurationCreated(ConfigurationCreatedEvent event);
 
     /**
      * Xử lý sự kiện khi một cấu hình bị xóa.
