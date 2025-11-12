@@ -74,5 +74,5 @@ public interface TestOrderService {
      * @param request Dữ liệu review, bao gồm các điều chỉnh.
      * @return Thông tin tóm tắt về kết quả review.
      */
-    ReviewTestOrderResponse reviewTestOrder(String orderId, ReviewTestOrderRequest request);
+    ReviewTestOrderResponse reviewTestOrder(String orderId, ReviewTestOrderHl7Request request);
 }

@@ -36,7 +36,7 @@ public class ReportJobController {
     public ResponseEntity<ApiResponse<JobStatusResponse>> getJobStatus(@PathVariable String jobId) {
 
         ReportJob job = reportJobRepository.findById(jobId)
-                .orElseThrow(() -> new NotFoundException(jobId));
+                .orElseThrow(() -> new NotFoundException("Not found jobId: " + jobId));
 
         FileStoreResponse fileResponse = null;
         // Kiểm tra xem job đã có file kết quả chưa
