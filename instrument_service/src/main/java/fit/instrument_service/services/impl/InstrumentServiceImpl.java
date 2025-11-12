@@ -19,10 +19,12 @@ import fit.instrument_service.enums.AuditAction;
 import fit.instrument_service.enums.InstrumentMode;
 import fit.instrument_service.enums.InstrumentStatus;
 import fit.instrument_service.enums.ReagentStatus;
+import fit.instrument_service.events.ConfigurationDeletedEvent;
 import fit.instrument_service.events.InstrumentActivatedEvent;
 import fit.instrument_service.events.InstrumentDeactivatedEvent;
 import fit.instrument_service.exceptions.NotFoundException;
 import fit.instrument_service.mappers.InstrumentMapper;
+import fit.instrument_service.repositories.ConfigurationRepository;
 import fit.instrument_service.repositories.InstrumentModeLogRepository;
 import fit.instrument_service.repositories.InstrumentReagentRepository;
 import fit.instrument_service.repositories.InstrumentRepository;
@@ -58,6 +60,8 @@ public class InstrumentServiceImpl implements InstrumentService {
     private final InstrumentReagentRepository instrumentReagentRepository;
 
     private final AuditLogService auditLogService;
+
+    private final ConfigurationRepository configurationRepository;
 
     @Override
     @Transactional
@@ -191,6 +195,7 @@ public class InstrumentServiceImpl implements InstrumentService {
 
         log.info("Successfully processed deactivation for instrument id: {}", instrument.getId());
     }
+
     @Override
     @Transactional
     public InstrumentReagentResponse installReagent(String instrumentId, InstallReagentRequest request) {
@@ -244,6 +249,7 @@ public class InstrumentServiceImpl implements InstrumentService {
         // 6. Trả về DTO Response
         return InstrumentMapper.toReagentResponse(savedReagent);
     }
+
     @Override
     @Transactional
     public InstrumentReagentResponse modifyReagentStatus(String instrumentId, String reagentId, ModifyReagentStatusRequest request) {
@@ -283,5 +289,21 @@ public class InstrumentServiceImpl implements InstrumentService {
 
         // 6. Trả về DTO Response
         return InstrumentMapper.toReagentResponse(updatedReagent);
+    }
+
+    @Override
+    public void handleConfigurationDeletion(ConfigurationDeletedEvent event) {
+        String configId = event.getConfigurationId();
+        log.info("Handling ConfigurationDeletedEvent for ID: {}", configId);
+
+        // Tìm và xóa configuration trong DB của instrument_service
+        configurationRepository.findById(configId).ifPresent(config -> {
+            configurationRepository.delete(config);
+            log.info("Successfully deleted configuration (sync) with ID: {}", configId);
+        });
+
+        if (!configurationRepository.existsById(configId)) {
+            log.warn("Configuration (sync) with ID: {} not found. No action taken.", configId);
+        }
     }
 }

@@ -6,6 +6,7 @@
 
 package fit.warehouse_service.services;
 
+import fit.warehouse_service.events.ConfigurationDeletedEvent;
 import fit.warehouse_service.events.InstrumentActivatedEvent;
 import fit.warehouse_service.events.InstrumentDeactivatedEvent;
 
@@ -29,4 +30,11 @@ public interface EventPublisherService {
      * @param event The event containing details of the deactivated instrument.
      */
     void publishInstrumentDeactivated(InstrumentDeactivatedEvent event);
+
+    /**
+     * Xuất bản sự kiện khi một Configuration bị xóa.
+     *
+     * @param event The event containing details of the deleted configuration.
+     */
+    void publishConfigurationDeleted(ConfigurationDeletedEvent event);
 }

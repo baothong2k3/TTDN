@@ -11,6 +11,7 @@ import fit.instrument_service.dtos.request.InstallReagentRequest;
 import fit.instrument_service.dtos.request.ModifyReagentStatusRequest;
 import fit.instrument_service.dtos.response.InstrumentReagentResponse;
 import fit.instrument_service.dtos.response.InstrumentResponse;
+import fit.instrument_service.events.ConfigurationDeletedEvent;
 import fit.instrument_service.events.InstrumentActivatedEvent;
 import fit.instrument_service.events.InstrumentDeactivatedEvent;
 
@@ -47,6 +48,13 @@ public interface InstrumentService {
     InstrumentReagentResponse installReagent(String instrumentId, InstallReagentRequest request);
 
     InstrumentReagentResponse modifyReagentStatus(String instrumentId, String reagentId, ModifyReagentStatusRequest request);
+
+    /**
+     * Xử lý logic nghiệp vụ khi nhận được sự kiện xóa cấu hình.
+     *
+     * @param event Sự kiện chứa ID của cấu hình cần xóa
+     */
+    void handleConfigurationDeletion(ConfigurationDeletedEvent event);
 
 
 }

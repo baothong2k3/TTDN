@@ -19,12 +19,15 @@ import fit.warehouse_service.dtos.response.PageResponse;
 import fit.warehouse_service.entities.ConfigurationSetting;
 import fit.warehouse_service.enums.DataType;
 import fit.warehouse_service.enums.WarehouseActionType;
+import fit.warehouse_service.events.ConfigurationDeletedEvent;
 import fit.warehouse_service.exceptions.DuplicateResourceException;
 import fit.warehouse_service.exceptions.NotFoundException;
+import fit.warehouse_service.exceptions.ResourceNotFoundException;
 import fit.warehouse_service.exceptions.ValidateValueFormatException;
 import fit.warehouse_service.mappers.ConfigurationMapper;
 import fit.warehouse_service.repositories.ConfigurationSettingRepository;
 import fit.warehouse_service.services.ConfigurationService;
+import fit.warehouse_service.services.EventPublisherService;
 import fit.warehouse_service.services.WarehouseEventLogService;
 import fit.warehouse_service.specifications.ConfigurationSpecification;
 import fit.warehouse_service.utils.SecurityUtils;
@@ -52,6 +55,7 @@ public class ConfigurationServiceImpl implements ConfigurationService {
     private final WarehouseEventLogService logService;
     private final ConfigurationMapper configurationMapper;
     private final ConfigurationSpecification configurationSpecification;
+    private final EventPublisherService eventPublisherService;
 
     @Override
     @Transactional
@@ -233,5 +237,31 @@ public class ConfigurationServiceImpl implements ConfigurationService {
         } catch (NumberFormatException e) {
             throw new ValidateValueFormatException("Invalid " + dataType.name().toLowerCase() + " format: " + value);
         }
+    }
+
+    @Override
+    @Transactional
+    public void deleteConfiguration(String id) {
+        log.info("Attempting to delete configuration with id: {}", id);
+
+        // 1. & 2. Kiểm tra cấu hình phải tồn tại
+        ConfigurationSetting configuration = configurationSettingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Configuration with id " + id + " not found."));
+
+        // 3. Xóa cấu hình
+        configurationSettingRepository.delete(configuration);
+        log.info("Successfully deleted configuration with id: {}", id);
+
+        // 4. Ghi lại log hành động (Audit Trail)
+        String currentUserId = SecurityUtils.getCurrentUserId();
+        logService.logEvent(
+                WarehouseActionType.CONFIG_DELETED, // Sử dụng enum
+                id,
+                "Configuration deleted: " + configuration.getName() + " (ID: " + id + ")",
+                currentUserId
+        );
+
+        // 5. Gửi sự kiện để đồng bộ với các service khác
+        eventPublisherService.publishConfigurationDeleted(new ConfigurationDeletedEvent(id));
     }
 }

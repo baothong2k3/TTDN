@@ -38,6 +38,10 @@ public class RabbitMQConfig {
     // Định nghĩa Queue mà instrument-service sẽ lắng nghe
     public static final String INSTRUMENT_DEACTIVATED_QUEUE = "q.instrument_deactivated";
 
+    // --- Hằng số cho Configuration Deleted ---
+    public static final String CONFIGURATION_DELETED_ROUTING_KEY = "configuration.deleted";
+    public static final String CONFIGURATION_DELETED_QUEUE = "q.configuration_deleted";
+
     @Bean
     public TopicExchange instrumentExchange() {
         return new TopicExchange(INSTRUMENT_EXCHANGE);
@@ -72,6 +76,21 @@ public class RabbitMQConfig {
                 .to(instrumentExchange)
                 .with(INSTRUMENT_DEACTIVATED_ROUTING_KEY);
     }
+
+    // --- @Bean cho Configuration Deleted ---
+    @Bean
+    public Queue configurationDeletedQueue() {
+        return new Queue(CONFIGURATION_DELETED_QUEUE, true);
+    }
+
+    @Bean
+    public Binding configurationDeletedBinding(Queue configurationDeletedQueue, TopicExchange instrumentExchange) {
+        return BindingBuilder
+                .bind(configurationDeletedQueue)
+                .to(instrumentExchange)
+                .with(CONFIGURATION_DELETED_ROUTING_KEY);
+    }
+    // --------------------------------------------
 
     // Bean này cấu hình Message Converter sử dụng Jackson để chuyển đổi JSON
     @Bean
