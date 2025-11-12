@@ -7,9 +7,7 @@
 package fit.instrument_service.configs;
 
 import fit.instrument_service.entities.BaseDocument;
-import fit.instrument_service.entities.Test;
 import fit.instrument_service.markers.HasBusinessId;
-import fit.instrument_service.utils.IdGenerator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.core.mapping.event.BeforeConvertCallback;
