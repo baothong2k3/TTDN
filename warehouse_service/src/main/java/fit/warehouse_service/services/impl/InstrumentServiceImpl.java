@@ -13,22 +13,18 @@ import fit.warehouse_service.dtos.request.CheckInstrumentStatusRequest;
 import fit.warehouse_service.dtos.request.CreateInstrumentRequest;
 import fit.warehouse_service.dtos.request.DeactivateInstrumentRequest;
 import fit.warehouse_service.dtos.response.*;
-import fit.warehouse_service.entities.ConfigurationSetting;
-import fit.warehouse_service.entities.Instrument;
-import fit.warehouse_service.entities.ReagentType;
-import fit.warehouse_service.entities.WarehouseEventLog;
+import fit.warehouse_service.entities.*;
 import fit.warehouse_service.enums.InstrumentStatus;
 import fit.warehouse_service.enums.ProtocolType;
 import fit.warehouse_service.enums.WarehouseActionType;
+import fit.warehouse_service.events.InstrumentActivatedEvent;
+import fit.warehouse_service.events.InstrumentDeactivatedEvent;
 import fit.warehouse_service.exceptions.AlreadyExistsException;
 import fit.warehouse_service.exceptions.DuplicateResourceException;
 import fit.warehouse_service.exceptions.NotFoundException;
 import fit.warehouse_service.exceptions.ResourceNotFoundException;
 import fit.warehouse_service.mappers.InstrumentMapper;
-import fit.warehouse_service.repositories.ConfigurationSettingRepository;
-import fit.warehouse_service.repositories.InstrumentRepository;
-import fit.warehouse_service.repositories.ReagentTypeRepository;
-import fit.warehouse_service.repositories.WarehouseEventLogRepository;
+import fit.warehouse_service.repositories.*;
 import fit.warehouse_service.services.*;
 import fit.warehouse_service.specifications.InstrumentSpecification;
 import fit.warehouse_service.utils.SortUtils;
@@ -77,7 +73,12 @@ public class InstrumentServiceImpl implements InstrumentService {
     private final ScheduledDeletionService scheduledDeletionService;
 
     private final InstrumentMapper instrumentMapper;
+
     private final InstrumentSpecification instrumentSpecification;
+
+    private final EventPublisherService eventPublisherService;
+
+    private final VendorRepository vendorRepository;
 
     @Override
     @Transactional
@@ -87,10 +88,24 @@ public class InstrumentServiceImpl implements InstrumentService {
             throw new DuplicateResourceException("Instrument with name '" + request.getName() + "' already exists.");
         });
 
+        // Check for duplicate serial number
+        if (instrumentRepository.existsBySerialNumber(request.getSerialNumber())) {
+            throw new DuplicateResourceException("Serial number already exists: " + request.getSerialNumber());
+        }
+
+        // Verify vendor exists
+        Vendor vendor=vendorRepository.findById(request.getVendorId())
+                .orElseThrow(() -> new ResourceNotFoundException("Vendor with ID '" + request.getVendorId() + "' not found."));
+
         Instrument instrument = new Instrument();
         instrument.setName(request.getName());
-        instrument.setStatus(request.getStatus() != null ? request.getStatus() : InstrumentStatus.INACTIVE);
-        instrument.setActive(true);
+        instrument.setStatus(InstrumentStatus.INACTIVE);
+        instrument.setActive(false);
+        instrument.setModel(request.getModel());
+        instrument.setType(request.getType());
+        instrument.setSerialNumber(request.getSerialNumber());
+        instrument.setVendor(vendor);
+
 
         instrument.setIpAddress(request.getIpAddress());
         instrument.setPort(request.getPort());
@@ -188,6 +203,20 @@ public class InstrumentServiceImpl implements InstrumentService {
         // Lưu thiết bị đã được cập nhật
         Instrument savedInstrument = instrumentRepository.save(instrument);
 
+        // Phát sự kiện kích hoạt thiết bị sang instrument-service
+        InstrumentActivatedEvent event = InstrumentActivatedEvent.builder()
+                .id(savedInstrument.getId())
+                .name(savedInstrument.getName())
+                .model(savedInstrument.getModel())
+                .type(savedInstrument.getType())
+                .serialNumber(savedInstrument.getSerialNumber())
+                .vendorId(savedInstrument.getVendor().getId())
+                .vendorName(savedInstrument.getVendor().getName())
+                .vendorContact(savedInstrument.getVendor().getPhone())
+                .build();
+
+        eventPublisherService.publishInstrumentActivated(event);
+
         // Hủy lịch xóa đã lên lịch (nếu có)
         scheduledDeletionService.cancelScheduledDeletion(savedInstrument.getId());
 
@@ -243,6 +272,13 @@ public class InstrumentServiceImpl implements InstrumentService {
 
         // Lưu thiết bị đã được cập nhật
         Instrument savedInstrument = instrumentRepository.save(instrument);
+
+        // Phát sự kiện vô hiệu hóa thiết bị sang instrument-service
+        InstrumentDeactivatedEvent event = InstrumentDeactivatedEvent.builder()
+                .id(savedInstrument.getId())
+                .build();
+
+        eventPublisherService.publishInstrumentDeactivated(event);
 
         // Lên lịch xóa thiết bị sau 3 tháng
         scheduledDeletionService.scheduleInstrumentDeletion(

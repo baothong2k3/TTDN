@@ -22,6 +22,19 @@ import java.util.Optional;
  */
 @Repository
 public interface InstrumentRepository extends JpaRepository<Instrument, String>, JpaSpecificationExecutor<Instrument> {
+    /**
+     * Tìm kiếm một Instrument theo tên.
+     *
+     * @param name Tên của Instrument cần tìm.
+     * @return Một Optional chứa Instrument nếu tìm thấy, ngược lại là rỗng.
+     */
     Optional<Instrument> findByName(String name);
 
+    /**
+     * Kiểm tra sự tồn tại của một Instrument theo số serial.
+     *
+     * @param serialNumber Số serial của Instrument cần kiểm tra.
+     * @return true nếu tồn tại, ngược lại là false.
+     */
+    boolean existsBySerialNumber(String serialNumber);
 }

@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.core.mapping.event.BeforeConvertCallback;
 
 /*
- * @description:
+ * @description: Configuration class for MongoDB callbacks.
  * @author: Tran Hien Vinh
  * @date:   10/11/2025
  * @version:    1.0

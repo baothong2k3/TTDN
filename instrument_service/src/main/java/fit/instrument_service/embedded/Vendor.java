@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Vendor {
-    private String vendorId; // (Req 3.6.2.1)
+    private String vendorId;
     private String vendorName;
     private String contact;
 }

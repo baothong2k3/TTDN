@@ -43,6 +43,19 @@ public class Instrument extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private ProtocolType protocolType;
 
+    @Column(nullable = false)
+    private String model;
+
+    @Column(nullable = false)
+    private String type;
+
+    @Column(unique = true, nullable = false)
+    private String serialNumber;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vendor_id")
+    private Vendor vendor;
+
     @ManyToMany
     @JoinTable(
             name = "instrument_compatible_reagents",

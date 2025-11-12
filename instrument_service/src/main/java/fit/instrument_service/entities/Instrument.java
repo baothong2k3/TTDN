@@ -9,6 +9,7 @@ package fit.instrument_service.entities;/*
  * @version: 1.0
  */
 
+import fit.instrument_service.embedded.Vendor;
 import fit.instrument_service.enums.InstrumentMode;
 import fit.instrument_service.enums.InstrumentStatus;
 import lombok.AllArgsConstructor;
@@ -34,21 +35,24 @@ public class Instrument extends BaseDocument {
     private String name; // Tên tùy chỉnh
 
     @Field("model")
-    private String model; // Model thiết bị (Req 3.6.3.1)
+    private String model; // Model thiết bị
 
     @Field("type")
-    private String type; // Loại thiết bị (Req 3.6.3.1)
+    private String type; // Loại thiết bị
 
     @Field("serial_number")
     @Indexed(unique = true)
     private String serialNumber; // Số seri_
 
     @Field("mode")
-    private InstrumentMode mode; // "Ready", "Maintenance", "Inactive" (Req 3.6.1.1)
+    private InstrumentMode mode;
 
     @Field("status")
-    private InstrumentStatus status; // "Available", "Running" (Req 3.6.1.2)
+    private InstrumentStatus status;
 
     @Field("last_mode_change_reason")
     private String lastModeChangeReason; // Lý do cho lần đổi mode cuối (Req 3.6.1.1)
+
+    @Field("vendor")
+    private Vendor vendor;
 }

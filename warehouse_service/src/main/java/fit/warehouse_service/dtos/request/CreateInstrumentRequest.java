@@ -9,7 +9,6 @@ package fit.warehouse_service.dtos.request;/*
  * @version: 1.0
  */
 
-import fit.warehouse_service.enums.InstrumentStatus;
 import fit.warehouse_service.enums.ProtocolType;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -25,8 +24,6 @@ public class CreateInstrumentRequest {
     @NotEmpty(message = "Instrument name cannot be empty.")
     private String name;
 
-    private InstrumentStatus status;
-
     @NotEmpty(message = "IP address cannot be empty.")
     private String ipAddress;
 
@@ -39,4 +36,16 @@ public class CreateInstrumentRequest {
     private Set<String> compatibleReagentIds;
     private Set<String> configurationSettingIds;
     private String cloneFromInstrumentId;
+
+    @NotEmpty(message = "Model cannot be empty.")
+    private String model;
+
+    @NotEmpty(message = "Type cannot be empty.")
+    private String type;
+
+    @NotEmpty(message = "Serial number cannot be empty.")
+    private String serialNumber;
+
+    @NotEmpty(message = "Vendor ID cannot be empty.")
+    private String vendorId;
 }
