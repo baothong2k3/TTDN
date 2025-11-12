@@ -1,9 +1,12 @@
+/*
+ * @ (#) PdfGenerationWorker.java    1.0    23/10/2025
+ * Copyright (c) 2025 IUH. All rights reserved.
+ */
 package fit.test_order_service.services;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-// Import DTOs response mới của bạn
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fit.test_order_service.dtos.response.CommentOrderResponse;
-import fit.test_order_service.entities.OrderComment; // Giữ lại nếu PdfGeneratorUtil VẪN dùng nó
 import fit.test_order_service.entities.ReportFileStore;
 import fit.test_order_service.entities.ReportJob;
 import fit.test_order_service.entities.TestOrder;
@@ -19,7 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.text.Normalizer;
 import java.time.LocalDateTime;
@@ -42,6 +44,9 @@ public class PdfGenerationWorker {
     private final PdfGeneratorUtil pdfGeneratorUtil;
     private final FileStorageService fileStorageService;
 
+    // <--- THÊM: Thêm hằng số MIME type
+    private static final String PDF_MIME_TYPE = "application/pdf";
+
     @Async
     @Transactional
     public void generatePdf(String jobId) {
@@ -54,25 +59,21 @@ public class PdfGenerationWorker {
             return;
         }
 
-        String customSavePath = null;
+        // String customSavePath = null; // <--- XÓA BỎ: Không cần biến này nữa
         String customFileName = null;
-        // --- SỬA 1: Chuẩn bị list comments ---
-        List<CommentOrderResponse> comments = new ArrayList<>(); // Dùng DTO Response
+        List<CommentOrderResponse> comments = new ArrayList<>();
 
         try {
             // 0. Parse Params
             if (job.getParamsJson() != null && !job.getParamsJson().isBlank()) {
                 try {
-                    // --- SỬA 2: Đổi TypeReference thành Map<String, Object> ---
                     Map<String, Object> params = objectMapper.readValue(job.getParamsJson(), new TypeReference<Map<String, Object>>() {
                     });
 
                     customFileName = (String) params.get("customFileName");
-                    customSavePath = (String) params.get("customSavePath"); // Lấy đường dẫn lưu
+                    // customSavePath = (String) params.get("customSavePath"); // <--- XÓA BỎ: Không đọc đường dẫn lưu nữa
 
-                    // --- SỬA 3: Trích xuất comments từ params ---
                     if (params.containsKey("comments")) {
-                        // ObjectMapper lưu trữ nó dưới dạng List<Map>, cần convert lại
                         List<?> rawComments = (List<?>) params.get("comments");
                         comments = objectMapper.convertValue(rawComments, new TypeReference<List<CommentOrderResponse>>() {});
                         log.info("Successfully parsed {} comments from job params.", comments.size());
@@ -99,16 +100,11 @@ public class PdfGenerationWorker {
 
             List<TestResult> results = testOrder.getResults();
 
-            // --- SỬA 4: Xóa List<OrderComment> comments = new ArrayList<>(); ---
-            // (Đã chuyển lên trên)
-
             job.setProgressPct(30);
             reportJobRepository.save(job);
 
             // 3. Tạo file PDF
-            // --- SỬA 5: Truyền DTO comments (List<CommentOrderResponse>) ---
-            // LƯU Ý: Bạn cũng phải cập nhật phương thức `generateTestResultPdf`
-            // trong `PdfGeneratorUtil.java` để nó chấp nhận `List<CommentOrderResponse>`
+            // (Giả sử bạn đã cập nhật PdfGeneratorUtil để chấp nhận List<CommentOrderResponse>)
             byte[] pdfBytes = pdfGeneratorUtil.generateTestResultPdf(testOrder, results, comments);
 
             if (pdfBytes == null || pdfBytes.length == 0) {
@@ -122,14 +118,22 @@ public class PdfGenerationWorker {
             String fileName = determineFileName(testOrder, customFileName);
 
             // 5. Lưu trữ file PDF
-            String fileKey = fileStorageService.storeFile(pdfBytes, customSavePath, fileName, "application/pdf", job.getRequestedBy());
+            // <--- THAY ĐỔI: Truyền 'null' cho tham số thứ 2 (requestedDirectoryPath)
+            String fileKey = fileStorageService.storeFile(
+                    pdfBytes,
+                    null, // Luôn dùng thư mục mặc định trên Cloudinary
+                    fileName,
+                    PDF_MIME_TYPE, // Dùng hằng số
+                    job.getRequestedBy()
+            );
 
+            // 'fileKey' bây giờ là URL Cloudinary
             // 6. Tạo bản ghi ReportFileStore
             ReportFileStore fileStore = ReportFileStore.builder()
-                    .storageType(fileStorageService.getStorageType())
-                    .objectKey(fileKey)
+                    .storageType(fileStorageService.getStorageType()) // Sẽ là CLOUDINARY
+                    .objectKey(fileKey) // Đây là URL
                     .fileName(fileName)
-                    .mimeType("application/pdf")
+                    .mimeType(PDF_MIME_TYPE) // Dùng hằng số
                     .byteSize((long) pdfBytes.length)
                     .createdBy(job.getRequestedBy())
                     .build();
@@ -139,12 +143,12 @@ public class PdfGenerationWorker {
             job.setResultFileId(savedFileStore.getFileId());
             job.setResultFile(savedFileStore);
             job.setStatus(JobStatus.SUCCEEDED);
-            job.setMessage("PDF generated successfully: " + fileKey);
+            job.setMessage("PDF generated successfully: " + fileKey); // Message chứa URL
             job.setProgressPct(100);
             job.setFinishedAt(LocalDateTime.now(ZoneOffset.UTC));
             reportJobRepository.save(job);
 
-            log.info("Successfully generated PDF for job ID: {}. File ID: {}. Location: {}", jobId, savedFileStore.getFileId(), fileKey);
+            log.info("Successfully generated PDF for job ID: {}. File ID: {}. Location (URL): {}", jobId, savedFileStore.getFileId(), fileKey);
 
         } catch (Exception e) {
             log.error("Failed to generate PDF for job ID: {}", jobId, e);
@@ -156,9 +160,7 @@ public class PdfGenerationWorker {
         }
     }
 
-    // ... (Các hàm determineFileName và removeAccents giữ nguyên) ...
     private String determineFileName(TestOrder order, String customFileName) {
-
         String finalBaseName;
 
         if (customFileName != null && !customFileName.isBlank()) {
