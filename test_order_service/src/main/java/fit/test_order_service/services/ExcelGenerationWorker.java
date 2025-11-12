@@ -19,6 +19,7 @@ import fit.test_order_service.repositories.TestOrderRepository;
 import fit.test_order_service.utils.ExcelGeneratorUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +45,9 @@ public class ExcelGenerationWorker {
     private final ExcelGeneratorUtil excelGeneratorUtil;
     private final FileStorageService fileStorageService;
     private final IamFeignClient iamFeignClient;
+
+    @Value("${app.cloudinary.export-folder}")
+    private String excelFolder;
 
     // Đưa MIME type ra làm hằng số
     private static final String EXCEL_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -220,8 +224,8 @@ public class ExcelGenerationWorker {
             // Cập nhật lời gọi: truyền 'null' cho 'requestedDirectoryPath' (tham số thứ 2)
             String fileKey = fileStorageService.storeFile(
                     excelBytes,
-                    null,
                     fileName,
+                    excelFolder,
                     EXCEL_MIME_TYPE,
                     job.getRequestedBy()
             );

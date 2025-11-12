@@ -568,16 +568,12 @@ public class TestOrderServiceImpl implements TestOrderService {
             throw new UnauthorizedException("Cannot request print job without a logged-in user.");
         }
 
-        // 3. Xử lý các tùy chọn in (tên file, đường dẫn)
+        // 3. Xử lý các tùy chọn in
         String requestedFileName = null;
-        String requestedSavePath = null;
 
         if (request != null) {
             if (request.getCustomFileName() != null && !request.getCustomFileName().isBlank()) {
                 requestedFileName = request.getCustomFileName().trim();
-            }
-            if (request.getCustomSavePath() != null && !request.getCustomSavePath().isBlank()) {
-                requestedSavePath = request.getCustomSavePath().trim();
             }
         }
 
@@ -612,8 +608,8 @@ public class TestOrderServiceImpl implements TestOrderService {
                 .requestedBy(currentUserId)
                 .orderId(orderId)
                 .printOrderRef(testOrder)
-                // Truyền comments vào (có thể là list rỗng, không sao)
-                .paramsJson(createParamsJson(requestedFileName, requestedSavePath, commentsToPrint))
+                // Truyền tham số đã loại bỏ customSavePath
+                .paramsJson(createParamsJson(requestedFileName, commentsToPrint))
                 .build();
 
         ReportJob savedJob = reportJobRepository.save(printJob);
@@ -635,17 +631,14 @@ public class TestOrderServiceImpl implements TestOrderService {
                 .build();
     }
 
-    // --- CẬP NHẬT PHƯƠNG THỨC NÀY ---
-    // Helper để tạo JSON lưu trữ tham số
-    private String createParamsJson(String customFileName, String customSavePath, List<CommentOrderResponse> comments) {
+    // Helper tạo JSON
+    private String createParamsJson(String customFileName, List<CommentOrderResponse> comments) {
         Map<String, Object> params = new HashMap<>();
 
         if (customFileName != null) {
             params.put("customFileName", customFileName);
         }
-        if (customSavePath != null) {
-            params.put("customSavePath", customSavePath);
-        }
+
         // Luôn thêm comments (nếu nó không rỗng)
         if (comments != null && !comments.isEmpty()) {
             params.put("comments", comments);
@@ -670,7 +663,7 @@ public class TestOrderServiceImpl implements TestOrderService {
             throw new UnauthorizedException("Cannot request export job without a logged-in user.");
         }
 
-        // --- Xử lý logic mới cho việc xác định phạm vi export ---
+        // --- Xử lý logic cho việc xác định phạm vi export ---
         List<String> targetOrderIds = new ArrayList<>();
         String dateRangeType = request.getDateRangeType() != null ? request.getDateRangeType() : "THIS_MONTH"; // Mặc định là THIS_MONTH
         LocalDate startDate = request.getStartDate();
@@ -702,14 +695,10 @@ public class TestOrderServiceImpl implements TestOrderService {
             }
         }
 
-        // Lấy tên file và đường dẫn tùy chỉnh (giữ nguyên)
+        // Lấy tên file tùy chỉnh (giữ nguyên)
         String requestedFileName = null;
-        String requestedSavePath = null;
         if (request.getCustomFileName() != null && !request.getCustomFileName().isBlank()) {
             requestedFileName = request.getCustomFileName().trim();
-        }
-        if (request.getCustomSavePath() != null && !request.getCustomSavePath().isBlank()) {
-            requestedSavePath = request.getCustomSavePath().trim();
         }
 
         // Tạo ReportJob
@@ -718,7 +707,7 @@ public class TestOrderServiceImpl implements TestOrderService {
                 .status(JobStatus.QUEUED)
                 .requestedBy(currentUserId)
                 // Lưu tham số mới vào JSON
-                .paramsJson(createExportParamsJson(targetOrderIds, requestedFileName, requestedSavePath, dateRangeType, startDate, endDate))
+                .paramsJson(createExportParamsJson(targetOrderIds, requestedFileName, dateRangeType, startDate, endDate))
                 .build();
 
         ReportJob savedJob = reportJobRepository.save(exportJob);
@@ -737,8 +726,8 @@ public class TestOrderServiceImpl implements TestOrderService {
                 .build();
     }
 
-    // Helper mới để tạo JSON cho export excel (cập nhật tham số)
-    private String createExportParamsJson(List<String> orderIds, String customFileName, String customSavePath,
+    // Helper mới để tạo JSON cho export excel
+    private String createExportParamsJson(List<String> orderIds, String customFileName,
                                           String dateRangeType, LocalDate startDate, LocalDate endDate) {
         Map<String, Object> params = new HashMap<>();
 
@@ -748,9 +737,7 @@ public class TestOrderServiceImpl implements TestOrderService {
         if (customFileName != null) {
             params.put("customFileName", customFileName);
         }
-        if (customSavePath != null) {
-            params.put("customSavePath", customSavePath);
-        }
+
         // Thêm các tham số thời gian
         if (dateRangeType != null) { // Chỉ thêm nếu không phải export theo ID list
             params.put("dateRangeType", dateRangeType);

@@ -15,7 +15,6 @@ import fit.test_order_service.enums.StorageType;
 import fit.test_order_service.services.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
@@ -30,13 +29,9 @@ public class CloudinaryFileStorageServiceImpl implements FileStorageService {
 
     private final Cloudinary cloudinary;
 
-    @Value("${app.cloudinary.export-folder}")
-    private String cloudinaryExportFolder;
 
     @Override
-    public String storeFile(byte[] fileBytes, String requestedDirectoryPath, String requestedFileName, String contentType, String uploaderUserId) {
-
-        String targetFolder = cloudinaryExportFolder;
+    public String storeFile(byte[] fileBytes, String requestedFileName, String targetFolder, String contentType, String uploaderUserId) {
 
         try {
             Map<String, Object> options = ObjectUtils.asMap(

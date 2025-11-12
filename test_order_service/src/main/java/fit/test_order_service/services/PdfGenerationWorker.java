@@ -19,6 +19,7 @@ import fit.test_order_service.repositories.TestOrderRepository;
 import fit.test_order_service.utils.PdfGeneratorUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,8 +45,10 @@ public class PdfGenerationWorker {
     private final PdfGeneratorUtil pdfGeneratorUtil;
     private final FileStorageService fileStorageService;
 
-    // <--- THÊM: Thêm hằng số MIME type
     private static final String PDF_MIME_TYPE = "application/pdf";
+
+    @Value("${app.cloudinary.pdf-folder}")
+    private String pdfFolder;
 
     @Async
     @Transactional
@@ -75,7 +78,8 @@ public class PdfGenerationWorker {
 
                     if (params.containsKey("comments")) {
                         List<?> rawComments = (List<?>) params.get("comments");
-                        comments = objectMapper.convertValue(rawComments, new TypeReference<List<CommentOrderResponse>>() {});
+                        comments = objectMapper.convertValue(rawComments, new TypeReference<List<CommentOrderResponse>>() {
+                        });
                         log.info("Successfully parsed {} comments from job params.", comments.size());
                     }
 
@@ -118,16 +122,14 @@ public class PdfGenerationWorker {
             String fileName = determineFileName(testOrder, customFileName);
 
             // 5. Lưu trữ file PDF
-            // <--- THAY ĐỔI: Truyền 'null' cho tham số thứ 2 (requestedDirectoryPath)
             String fileKey = fileStorageService.storeFile(
                     pdfBytes,
-                    null, // Luôn dùng thư mục mặc định trên Cloudinary
                     fileName,
+                    pdfFolder, // Sử dụng thư mục cấu hình cho PDF
                     PDF_MIME_TYPE, // Dùng hằng số
                     job.getRequestedBy()
             );
 
-            // 'fileKey' bây giờ là URL Cloudinary
             // 6. Tạo bản ghi ReportFileStore
             ReportFileStore fileStore = ReportFileStore.builder()
                     .storageType(fileStorageService.getStorageType()) // Sẽ là CLOUDINARY
