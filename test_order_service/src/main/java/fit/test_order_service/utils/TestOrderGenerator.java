@@ -2,6 +2,7 @@ package fit.test_order_service.utils;
 
 import lombok.experimental.UtilityClass;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -44,10 +45,22 @@ public class TestOrderGenerator {
     }
 
     public String generateBarcode() {
-        String datePart = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
-                .format(DateTimeFormatter.ofPattern("yyMMddHHmmss"));
-        String uuidSuffix = UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
-        int number = ThreadLocalRandom.current().nextInt(100, 999);
-        return String.format("BC-%s-%s-%d", datePart, uuidSuffix, number);
+        String datePart = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+                .format(DateTimeFormatter.ofPattern("yyMMdd"));
+
+        String randomCode = generateRandomAlphaNumeric(6);
+
+        return String.format("LAB-BS-%s-%s", datePart, randomCode);
+    }
+
+    private String generateRandomAlphaNumeric(int length) {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        StringBuilder sb = new StringBuilder();
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+
+        for (int i = 0; i < length; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
     }
 }

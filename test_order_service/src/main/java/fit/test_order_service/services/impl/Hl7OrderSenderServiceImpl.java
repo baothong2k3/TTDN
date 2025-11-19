@@ -9,7 +9,7 @@ package fit.test_order_service.services.impl;
 import fit.test_order_service.dtos.request.Hl7MessageRequest;
 import fit.test_order_service.dtos.response.Hl7ProcessResponse;
 import fit.test_order_service.entities.TestOrder;
-import fit.test_order_service.entities.TestOrderItem;
+import fit.test_order_service.entities.TestResult;
 import fit.test_order_service.exceptions.NotFoundException;
 import fit.test_order_service.repositories.TestOrderRepository;
 import fit.test_order_service.services.Hl7OrderSenderService;
@@ -22,6 +22,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 
 /*
@@ -45,10 +47,10 @@ public class Hl7OrderSenderServiceImpl implements Hl7OrderSenderService {
         // Lấy order và items
         TestOrder order = testOrderRepository.findById(testOrderId)
                 .orElseThrow(() -> new NotFoundException("Test order not found: " + testOrderId));
-        List<TestOrderItem> items = order.getItems();
+        List<TestResult> results = order.getResults();
 
         // Gửi order đi và nhận về HL7 response
-        String hl7Response = sendOrderToInstrument(order, items);
+        String hl7Response = sendOrderToInstrument(order, results);
 
         // Tạo request object cho processHl7Message
         Hl7MessageRequest hl7Request = new Hl7MessageRequest();
@@ -59,16 +61,16 @@ public class Hl7OrderSenderServiceImpl implements Hl7OrderSenderService {
     }
 
     @Override
-    public String sendOrderToInstrument(TestOrder order, List<TestOrderItem> items) {
+    public String sendOrderToInstrument(TestOrder order, List<TestResult> results) {
         // Xây dựng HL7 từ order và items
-        String payload = hl7ParserService.buildHl7OrderMessage(order, items);
+        String payload = hl7ParserService.buildHl7OrderMessage(order, results);
         log.info("[HL7] Sending OML^O21 for order {}...", order.getOrderCode());
         log.debug("HL7 request payload:\n{}", payload);
 
         // Nếu chưa có kết nối, mock HL7 response
         if (isMockMode()) {
             log.info("[MOCK] Simulating analyzer response for order {}", order.getOrderCode());
-            return buildMockHl7Response(order, items);
+            return buildMockHl7Response(order, results);
         }
 
 //        // Nếu có kết nối thật
@@ -88,9 +90,10 @@ public class Hl7OrderSenderServiceImpl implements Hl7OrderSenderService {
     /**
      * Giả lập HL7 ORU^R01 (phản hồi kết quả từ máy)
      */
-    private String buildMockHl7Response(TestOrder order, List<TestOrderItem> items) {
+    private String buildMockHl7Response(TestOrder order, List<TestResult> results) {
         // Xây dựng tin nhắn HL7 ORU^R01
         StringBuilder hl7 = new StringBuilder();
+        Random random = new Random();
 
         // MSH Segment
         hl7.append("MSH|^~\\&|INSTRUMENT|LAB|TEST-ORDER|SYSTEM|")
@@ -113,42 +116,35 @@ public class Hl7OrderSenderServiceImpl implements Hl7OrderSenderService {
                 .append(order.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")))
                 .append("\r");
 
+        List<TestResult> payloadResults = (results == null || results.isEmpty())
+                ? buildDefaultResults(order)
+                : results;
+
         int index = 1;
-        for (TestOrderItem item : items) {
-            String code = item.getTestCode().toUpperCase();
-            String testName = item.getTestName();
+        for (TestResult result : payloadResults) {
+            String code = result.getTestCode() != null ? result.getTestCode().toUpperCase() : "GEN" + index;
+            String testName = result.getAnalyteName();
 
-            // Mặc định
-            String value = String.format("%.1f", 10 + Math.random() * 5);
-            String unit = "mg/dL";
-            String refRange = "";
-            String flag = "N"; // Normal
+            Map<String, String[]> defaults = Map.of(
+                    "GLU", new String[]{"92", "mg/dL", "70-100"},
+                    "HGB", new String[]{"14.2", "g/dL", "13.5-17.5"},
+                    "WBC", new String[]{"6.8", "10^3/uL", "4.5-11.0"},
+                    "PLT", new String[]{"265", "10^3/uL", "150-400"},
+                    "RBC", new String[]{"4.9", "10^6/uL", "4.2-5.9"}
+            );
 
-            switch (code) {
-                case "GLU" -> { value = "92";  unit = "mg/dL";  refRange = "70-100"; }
-                case "HGB" -> { value = "14.2"; unit = "g/dL";  refRange = "13.5-17.5"; }
-                case "WBC" -> { value = "6.8";  unit = "10^3/uL"; refRange = "4.5-11.0"; }
-                case "PLT" -> { value = "265";  unit = "10^3/uL"; refRange = "150-400"; }
-                case "RBC" -> { value = "4.9";  unit = "10^6/uL"; refRange = "4.2-5.9"; }
-                case "HCT" -> { value = "45";   unit = "%";      refRange = "38-50"; }
-                case "CRE" -> { value = "0.9";  unit = "mg/dL";  refRange = "0.6-1.3"; }
-                case "BUN" -> { value = "15";   unit = "mg/dL";  refRange = "7-20"; }
-                case "HDL" -> { value = "55";   unit = "mg/dL";  refRange = ">40"; }
-                case "LDL" -> { value = "120";  unit = "mg/dL";  refRange = "<130"; }
-                case "CHOL" -> { value = "180"; unit = "mg/dL";  refRange = "<200"; }
-                case "ALT" -> { value = "25";   unit = "U/L";    refRange = "7-56"; }
-                case "AST" -> { value = "30";   unit = "U/L";    refRange = "10-40"; }
-                case "ALP" -> { value = "110";  unit = "U/L";    refRange = "44-147"; }
-                case "CA"  -> { value = "9.2";  unit = "mg/dL";  refRange = "8.6-10.3"; }
-                case "NA"  -> { value = "140";  unit = "mmol/L"; refRange = "135-145"; }
-                case "K"   -> { value = "4.2";  unit = "mmol/L"; refRange = "3.5-5.1"; }
-                case "CL"  -> { value = "103";  unit = "mmol/L"; refRange = "98-107"; }
-                case "CO2" -> { value = "25";   unit = "mmol/L"; refRange = "22-29"; }
-                case "TP"  -> { value = "7.0";  unit = "g/dL";   refRange = "6.3-7.9"; }
-            }
+            String[] defaultValues = defaults.getOrDefault(code, new String[]{
+                    String.format("%.1f", 10 + random.nextDouble() * 5),
+                    result.getUnit() != null ? result.getUnit() : "mg/dL",
+                    result.getReferenceRange() != null ? result.getReferenceRange() : ""
+            });
 
-            // Sinh cờ bất thường (High/Low) ngẫu nhiên nhỏ
-            double chance = Math.random();
+            String value = defaultValues[0];
+            String unit = defaultValues[1];
+            String refRange = defaultValues[2];
+            String flag = "N";
+
+            double chance = random.nextDouble();
             if (chance < 0.1) flag = "H";
             else if (chance > 0.9) flag = "L";
 
@@ -159,5 +155,16 @@ public class Hl7OrderSenderServiceImpl implements Hl7OrderSenderService {
         }
 
         return hl7.toString();
+    }
+
+    private List<TestResult> buildDefaultResults(TestOrder order) {
+        return List.of(
+                TestResult.builder().orderId(order.getOrderId()).testCode("GLU").analyteName("Glucose")
+                        .unit("mg/dL").referenceRange("70-100").valueText("92").build(),
+                TestResult.builder().orderId(order.getOrderId()).testCode("HGB").analyteName("Hemoglobin")
+                        .unit("g/dL").referenceRange("13.5-17.5").valueText("14.2").build(),
+                TestResult.builder().orderId(order.getOrderId()).testCode("WBC").analyteName("White Blood Cell")
+                        .unit("10^3/uL").referenceRange("4.5-11.0").valueText("6.8").build()
+        );
     }
 }

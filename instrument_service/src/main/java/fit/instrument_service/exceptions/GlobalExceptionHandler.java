@@ -223,4 +223,17 @@ public class GlobalExceptionHandler {
                 )
         );
     }
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException ex, HttpServletRequest request) {
+        ApiResponse<Object> response = ApiResponse.error("An unexpected error occurred.", HttpStatus.INTERNAL_SERVER_ERROR.value());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                new ErrorResponse(
+                        response.getStatus(),
+                        response.getMessage(),
+                        LocalDateTime.now(),
+                        request.getRequestURI(),
+                        List.of(ex.getMessage())
+                )
+        );
+    }
 }

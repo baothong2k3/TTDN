@@ -60,8 +60,8 @@ public class TestOrder {
     @Column(name = "date_of_birth", columnDefinition = "date", nullable = false)
     private LocalDate dateOfBirth;
 
-    @Column(name = "barcode", unique = true) // 'unique = true' là tùy chọn, nhưng nên có
-    private String barcode; // <-- THÊM TRƯỜNG NÀY
+    @Column(name = "barcode", unique = true)
+    private String barcode;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "entry_source")
@@ -144,11 +144,6 @@ public class TestOrder {
 
     @Column(name = "deleted_by", length = 36)
     private String deletedBy;
-
-    /* Relations (read-only refs) */
-    @OneToMany(mappedBy = "orderRef", fetch = FetchType.LAZY)
-    @OrderBy("createdAt DESC")
-    private List<TestOrderItem> items;
 
     @OneToMany(mappedBy = "orderRef", fetch = FetchType.LAZY)
     @OrderBy("createdAt DESC")

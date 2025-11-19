@@ -19,7 +19,7 @@ import java.util.List;
 public class TestOrderResponse {
     private String id;
     private String orderCode;
-
+    private String barcode;
     String medicalRecordId;
     String medicalRecordCode;
 
@@ -48,6 +48,4 @@ public class TestOrderResponse {
 
     private LocalDateTime deletedAt;
     private String deletedBy;
-
-    private List<TestOrderItemResponse> items;
 }
