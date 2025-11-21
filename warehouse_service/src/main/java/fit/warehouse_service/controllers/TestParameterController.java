@@ -21,6 +21,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /*
  * @description: Controller for managing Test Parameters
@@ -48,6 +49,13 @@ public class TestParameterController {
     public ResponseEntity<ApiResponse<TestParameterResponse>> getTestParameterByAbbreviation(
             @PathVariable String abbreviation) {
         TestParameterResponse response = testParameterService.getTestParameterByAbbreviation(abbreviation);
+        return ResponseEntity.ok(ApiResponse.success(response, "Test parameter retrieved successfully"));}
+
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @GetMapping("/{testParameterId}")
+    public ResponseEntity<ApiResponse<TestParameterResponse>> getTestParameterByTestParameterId(
+            @PathVariable String testParameterId) {
+        TestParameterResponse response = testParameterService.getTestParameterByTestParameterId(testParameterId);
         return ResponseEntity.ok(ApiResponse.success(response, "Test parameter retrieved successfully"));}
 
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
@@ -89,5 +97,9 @@ public class TestParameterController {
 
         return ResponseEntity.ok(ApiResponse.success(response, "Test parameters retrieved successfully"));
     }
-
+    @PostMapping("/validate-ids")
+    public ResponseEntity<ApiResponse<Boolean>> validateTestParameters(@RequestBody List<String> ids) {
+        boolean isValid = testParameterService.validateTestParametersExist(ids);
+        return ResponseEntity.ok(ApiResponse.success(isValid, "Validation result"));
+    }
 }

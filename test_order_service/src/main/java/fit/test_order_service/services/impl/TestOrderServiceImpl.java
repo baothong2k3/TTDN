@@ -4,7 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fit.test_order_service.client.IamFeignClient;
 import fit.test_order_service.client.PatientMedicalRecordFeignClient;
+import fit.test_order_service.client.WarehouseFeignClient;
 import fit.test_order_service.client.dtos.PatientMedicalRecordInternalResponse;
+import fit.test_order_service.client.dtos.ReagentDeductionRequest;
+import fit.test_order_service.client.dtos.ReagentDeductionResponse;
 import fit.test_order_service.client.dtos.UserInternalResponse;
 import fit.test_order_service.dtos.request.*;
 import fit.test_order_service.dtos.response.*;
@@ -68,37 +71,53 @@ public class TestOrderServiceImpl implements TestOrderService {
     private final OrderCommentRepository orderCommentRepository;
     private final Hl7ParserService hl7ParserService;
 
+    private final TestTypeRepository testTypeRepository;
+    private final TestTypeService testTypeService;
+    private final WarehouseFeignClient warehouseFeignClient;
+
     @Override
+    @Transactional
     public TestOrderResponse createTestOrder(CreateTestOrderRequest request) {
-        // 1. Lấy thông tin bệnh nhân
+        // 1. Lấy thông tin TestType để biết cần trừ hóa chất gì
+        TestType testType = testTypeRepository.findById(request.getTestTypeId())
+                .orElseThrow(() -> new NotFoundException("TestType not found with ID: " + request.getTestTypeId()));
+
+        // 3. Lấy thông tin bệnh nhân (Logic cũ)
         ApiResponse<PatientMedicalRecordInternalResponse> patientApiResponse = patientMedicalRecordFeignClient.getPatientMedicalRecordByCode(request.getMedicalRecordCode());
         PatientMedicalRecordInternalResponse patientData = patientApiResponse.getData();
 
-        // 2. Dùng mapper để chuyển đổi
+        // 4. Dùng mapper để chuyển đổi
         TestOrder testOrder = testOrderMapper.toEntity(patientData);
         if (testOrder == null) {
             throw new RuntimeException("Could not map patient data to test order.");
         }
 
-        // 3. Set các thông tin còn lại
+        TestTypeResponse testTypeResponse = testTypeService.getTestTypeById(request.getTestTypeId());
+
+        // 5. Set các thông tin còn lại
+        testOrder.setTestTypeRef(testType); // QUAN TRỌNG: Gán TestType cho Order
+        // Lưu snapshot các thông tin quan trọng của TestType tại thời điểm tạo đơn
+        testOrder.setTestTypeIdSnapshot(testType.getId());
+        testOrder.setTestTypeNameSnapshot(testType.getName());
+
         testOrder.setStatus(OrderStatus.PENDING);
         testOrder.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
         testOrder.setBarcode(TestOrderGenerator.generateBarcode());
 
-        // 4. Lấy User ID từ SecurityUtils
+        // 6. Lấy User ID từ SecurityUtils
         String currentUserId = SecurityUtils.getCurrentUserId();
         if (currentUserId == null) {
-            // Xử lý trường hợp không tìm thấy user, ví dụ: throw exception hoặc dùng giá trị mặc định
             throw new IllegalStateException("Cannot create test order without a logged-in user.");
         }
         testOrder.setCreatedBy(currentUserId);
 
-        // 5. Lưu và trả về
+        // 7. Lưu và trả về
         TestOrder savedTestOrder = testOrderRepository.save(testOrder);
 
-        // 5. Ghi log sự kiện CREATED
+        // 8. Ghi log sự kiện CREATED
         orderEventLogService.logEvent(savedTestOrder, EventType.CREATE, "Test order created for medical record: " + savedTestOrder.getMedicalRecordCode());
-        return testOrderMapper.toResponse(savedTestOrder);
+
+        return testOrderMapper.toResponse(savedTestOrder, testTypeResponse);
     }
 
     @Override
@@ -160,6 +179,16 @@ public class TestOrderServiceImpl implements TestOrderService {
         // --- KẾT THÚC LOGIC LẤY COMMENT ---
 
         return response;
+    }
+
+    @Override
+    public TestOrderResponse getTestOrderByTestOrderId(String id) {
+        TestOrder testOrder = testOrderRepository.findByOrderIdAndDeletedFalse(id)
+                .orElseThrow(() -> new NotFoundException("Test order not found with id: " + id));
+
+        TestTypeResponse testTypeResponse = testTypeService.getTestTypeById(testOrder.getTestTypeRef().getId());
+
+        return testOrderMapper.toResponse(testOrder, testTypeResponse);
     }
 
     // --- CÁC HÀM HELPER MAP THỦ CÔNG CHO getTestOrderById ---
@@ -341,9 +370,11 @@ public class TestOrderServiceImpl implements TestOrderService {
             }
         }
 
+        TestTypeResponse testTypeResponse = testTypeService.getTestTypeById(existingOrder.getTestTypeRef().getId());
+
         if (!hasChanges) {
             log.info("No changes detected for test order: {}", orderCode);
-            return testOrderMapper.toResponse(existingOrder);
+            return testOrderMapper.toResponse(existingOrder, testTypeResponse);
         }
 
         // Get current user ID
@@ -363,7 +394,7 @@ public class TestOrderServiceImpl implements TestOrderService {
 
         log.info("Test order {} updated successfully.", orderCode);
 
-        return testOrderMapper.toResponse(updatedOrder);
+        return testOrderMapper.toResponse(updatedOrder, testTypeResponse);
     }
 
     // Helper calculate age
@@ -407,7 +438,14 @@ public class TestOrderServiceImpl implements TestOrderService {
             return PageResponse.empty(page, size, "No data", filterInfo);
         }
 
-        Page<TestOrderResponse> dtoPage = testOrderPage.map(testOrderMapper::toResponse);
+        Page<TestOrderResponse> dtoPage = testOrderPage.map(testOrder -> {
+
+            // 1. Gọi TestTypeService để lấy chi tiết TestType
+            TestTypeResponse testTypeResponse = testTypeService.getTestTypeById(testOrder.getTestTypeRef().getId());
+
+            // 2. Map TestOrder → TestOrderResponse (kèm testTypeResponse)
+            return testOrderMapper.toResponse(testOrder, testTypeResponse);
+        });
 
         try {
             String details = String.format(
@@ -796,12 +834,14 @@ public class TestOrderServiceImpl implements TestOrderService {
         // vì không có người dùng nào đăng nhập khi máy gọi
         testOrder.setCreatedBy("SYSTEM_AUTO_CREATE");
 
+        TestTypeResponse testTypeResponse = testTypeService.getTestTypeById(testOrder.getTestTypeRef().getId());
+
         TestOrder savedTestOrder = testOrderRepository.save(testOrder);
 
         // Ghi log sự kiện
         orderEventLogService.logEvent(savedTestOrder, EventType.CREATE,
                 "Shell test order auto-created from instrument for barcode: " + barcode);
 
-        return testOrderMapper.toResponse(savedTestOrder);
+        return testOrderMapper.toResponse(savedTestOrder, testTypeResponse);
     }
 }

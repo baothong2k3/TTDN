@@ -12,6 +12,7 @@ import fit.warehouse_service.dtos.response.PageResponse;
 import fit.warehouse_service.dtos.response.TestParameterResponse;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /*
  * @description: Service interface for managing ParameterRange entities
@@ -77,4 +78,15 @@ public interface TestParameterService {
      * @return PageResponse chứa danh sách TestParameterResponse theo trang
      */
     PageResponse<TestParameterResponse> getAllTestParameters(int page, int size, String[] sort, String search, LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Lấy thông tin một TestParameter theo testParameterId
+     *
+     * @param testParameterId id của TestParameter cần lấy
+     *
+     * @return TestParameterResponse chứa thông tin của TestParameter
+     */
+    TestParameterResponse getTestParameterByTestParameterId(String testParameterId);
+
+    boolean validateTestParametersExist(List<String> ids);
 }

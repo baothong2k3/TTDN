@@ -165,6 +165,20 @@ public class TestOrder {
     @OrderBy("createdAt DESC")
     private List<ReportJob> relatedPrintJobs;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "test_type_id", nullable = false)
+    private TestType testTypeRef;
+
+    @NotBlank
+    @Size(max = 36)
+    @Column(name = "test_type_id_snapshot", length = 36, nullable = false)
+    private String testTypeIdSnapshot;
+
+    @NotBlank
+    @Size(max = 100)
+    @Column(name = "test_type_name_snapshot", length = 100, nullable = false)
+    private String testTypeNameSnapshot;
+
     @PrePersist
     void pp() {
         if (orderId == null) orderId = TestOrderGenerator.generateTestOrderId();

@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 /*
@@ -83,4 +84,6 @@ public interface TestParameterRepository extends JpaRepository<TestParameter, St
            "FROM TestParameter tp " +
            "WHERE tp.abbreviation = :abbreviation AND tp.isDeleted = false")
     boolean existsByAbbreviationAndDeletedFalse(String abbreviation);
+
+    List<TestParameter> findAllByIdIn(List<String> ids);
 }

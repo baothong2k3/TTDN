@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /*
  * @description: Service implementation for managing TestParameter entities
@@ -250,5 +251,22 @@ public class TestParameterServiceImpl implements TestParameterService {
                 testParameterPage.getTotalElements());
 
         return pageResponse;
+    }
+
+    @Override
+    public TestParameterResponse getTestParameterByTestParameterId(String testParameterId) {
+        log.info("Getting test parameter by ID: {}", testParameterId);
+
+        TestParameter testParameter = testParameterRepository.findById(testParameterId)
+                .orElseThrow(() -> new NotFoundException("Test parameter not found with ID: " + testParameterId));
+
+        return testParameterMapper.mapToResponse(testParameter);
+    }
+
+    @Override
+    public boolean validateTestParametersExist(List<String> ids) {
+        if (ids == null || ids.isEmpty()) return true;
+        List<TestParameter> found = testParameterRepository.findAllByIdIn(ids);
+        return found.size() == ids.size(); // Nếu tìm thấy đủ số lượng ID nghĩa là tất cả đều tồn tại
     }
 }
