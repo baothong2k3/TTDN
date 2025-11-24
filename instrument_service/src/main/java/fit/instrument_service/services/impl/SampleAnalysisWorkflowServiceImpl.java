@@ -842,16 +842,16 @@ public class SampleAnalysisWorkflowServiceImpl implements SampleAnalysisWorkflow
         }
         // ------------------------------------------------------------------
 
-        boolean publishedToTestOrder = publishToTestOrderService(hl7Message);
-
-
-        PublishStatus publishStatus = (publishedToTestOrder)
-                ? PublishStatus.SENT
-                : PublishStatus.FAILED;
-
-        rawResult.setPublishStatus(publishStatus);
-        rawResult.setReadyForDeletion(publishedToTestOrder);
-        rawTestResultRepository.save(rawResult);
+//        boolean publishedToTestOrder = publishToTestOrderService(hl7Message);
+//
+//
+//        PublishStatus publishStatus = (publishedToTestOrder)
+//                ? PublishStatus.SENT
+//                : PublishStatus.FAILED;
+//
+//        rawResult.setPublishStatus(publishStatus);
+//        rawResult.setReadyForDeletion(publishedToTestOrder);
+//        rawTestResultRepository.save(rawResult);
 
         workflowRepository.findById(sample.getWorkflowId()).ifPresent(workflow -> {
             workflow.setResultsPublished(true);
