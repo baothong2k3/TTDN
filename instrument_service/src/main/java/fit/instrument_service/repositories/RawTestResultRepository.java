@@ -10,8 +10,6 @@ import fit.instrument_service.entities.RawTestResult;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-
 /*
  * @description: Repository quản lý các kết quả xét nghiệm thô trong hệ thống
  * @author: Tran Hien Vinh
@@ -20,5 +18,4 @@ import java.util.List;
  */
 @Repository
 public interface RawTestResultRepository extends MongoRepository<RawTestResult, String> {
-    List<RawTestResult> findByBarcodeIn(List<String> barcodes);
 }
