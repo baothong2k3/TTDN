@@ -22,6 +22,7 @@ import fit.warehouse_service.entities.ConfigurationSetting;
 import fit.warehouse_service.enums.WarehouseActionType;
 import fit.warehouse_service.events.ConfigurationCreatedEvent;
 import fit.warehouse_service.events.ConfigurationDeletedEvent;
+import fit.warehouse_service.events.ConfigurationUpdatedEvent;
 import fit.warehouse_service.exceptions.DuplicateResourceException;
 import fit.warehouse_service.exceptions.NotFoundException;
 import fit.warehouse_service.exceptions.ResourceNotFoundException;
@@ -142,6 +143,16 @@ public class ConfigurationServiceImpl implements ConfigurationService {
                 "ConfigurationSetting",
                 logDetails
         );
+
+        // Publish event update sang Instrument Service
+        ConfigurationUpdatedEvent event = new ConfigurationUpdatedEvent(
+                updatedConfig.getId(),
+                updatedConfig.getName(),
+                updatedConfig.getVersion(),
+                request.getSettings(), // Truyền Map settings mới nhất
+                request.getModificationReason()
+        );
+        eventPublisherService.publishConfigurationUpdated(event);
 
         return configurationMapper.toResponseUpdate(updatedConfig);
     }

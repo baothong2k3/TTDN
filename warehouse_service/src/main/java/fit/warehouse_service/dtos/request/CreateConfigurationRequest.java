@@ -38,8 +38,8 @@ public class CreateConfigurationRequest {
 
     // Các trường mới được thêm vào để khớp với Instrument Service (Req 3.6.3.1)
 
-    @NotBlank(message = "Configuration type is required (General/Specific).")
-    @Pattern(regexp = "^(General|Specific)$", message = "Configuration type must be either 'General' or 'Specific'.")
+    @NotBlank(message = "Configuration type is required (GENERAL/SPECIFIC).")
+    @Pattern(regexp = "^(GENERAL|SPECIFIC)$", message = "Configuration type must be either 'General' or 'Specific'.")
     private String configType; // Tương ứng với ConfigurationType bên Instrument Service
 
     private String instrumentModel; // Bắt buộc nếu configType là "Specific"
