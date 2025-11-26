@@ -10,11 +10,18 @@ package fit.monitoring_service.services.impl;/*
  */
 
 import fit.monitoring_service.dtos.event.SystemEvent;
+import fit.monitoring_service.dtos.request.EventLogFilterRequest;
+import fit.monitoring_service.dtos.response.PageResponse;
 import fit.monitoring_service.entities.EventLog;
+import fit.monitoring_service.exceptions.ResourceNotFoundException;
 import fit.monitoring_service.repositories.EventLogRepository;
 import fit.monitoring_service.services.EventLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -50,5 +57,36 @@ public class EventLogServiceImpl implements EventLogService {
             log.error("Failed to save event log: {}", e.getMessage(), e);
             // Tùy chọn: Có thể throw exception hoặc gửi alert nếu cần
         }
+    }
+
+    @Override
+    public PageResponse<EventLog> getEventLogs(EventLogFilterRequest filter, Pageable pageable) {
+        // Xử lý sắp xếp mặc định nếu không có sort được gửi lên: Latest date (DESC)
+        if (pageable.getSort().isUnsorted()) {
+            pageable = PageRequest.of(
+                    pageable.getPageNumber(),
+                    pageable.getPageSize(),
+                    Sort.by(Sort.Direction.DESC, "created_at")
+            );
+        }
+
+        // Gọi repository custom để tìm kiếm
+        Page<EventLog> pageResult = eventLogRepository.searchEventLogs(filter, pageable);
+
+        // Map sang PageResponse DTO
+        return PageResponse.<EventLog>builder()
+                .content(pageResult.getContent())
+                .pageNo(pageResult.getNumber())
+                .pageSize(pageResult.getSize())
+                .totalElements(pageResult.getTotalElements())
+                .totalPages(pageResult.getTotalPages())
+                .last(pageResult.isLast())
+                .build();
+    }
+
+    @Override
+    public EventLog getEventLogById(String id) {
+        return eventLogRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Event log not found with id: " + id));
     }
 }
