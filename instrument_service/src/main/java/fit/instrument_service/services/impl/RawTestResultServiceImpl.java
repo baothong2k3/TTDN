@@ -20,6 +20,7 @@ import fit.instrument_service.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +36,9 @@ public class RawTestResultServiceImpl implements RawTestResultService {
 
     private final RawTestResultRepository rawTestResultRepository;
     private final RabbitTemplate rabbitTemplate;
+
+    @Value("${instrument.raw-result.retention-days:30}")
+    private int retentionDays;
 
     @Override
     @Transactional
@@ -91,6 +95,50 @@ public class RawTestResultServiceImpl implements RawTestResultService {
         } catch (Exception e) {
             log.error("Lỗi khi gửi event audit log", e);
             // Không throw exception để tránh rollback việc xóa DB
+        }
+    }
+
+    @Override
+    @Transactional
+    public void executeAutoDeletion() {
+        log.info("Starting auto-deletion background job...");
+
+        // 1. Xác định ngưỡng thời gian (Ví dụ: Xóa data cũ hơn 30 ngày)
+        LocalDateTime threshold = LocalDateTime.now().minusDays(retentionDays);
+
+        // 2. Tìm các bản ghi đủ điều kiện (Ready for deletion + Old enough)
+        List<RawTestResult> oldResults = rawTestResultRepository.findDeletableOldResults(threshold);
+
+        if (oldResults.isEmpty()) {
+            log.info("No old raw results found to delete.");
+            return;
+        }
+
+        List<String> deletedBarcodes = oldResults.stream()
+                .map(RawTestResult::getBarcode)
+                .collect(Collectors.toList());
+
+        // 3. Thực hiện xóa
+        rawTestResultRepository.deleteAll(oldResults);
+        log.info("Auto-deleted {} old raw results created before {}", oldResults.size(), threshold);
+
+        // 4. Publish Event Audit Trail (SRS 3.6.1.6 requires audit log)
+        RawResultDeletedEvent event = RawResultDeletedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .performedBy("SYSTEM_SCHEDULER") // Người thực hiện là hệ thống
+                .deletedBarcodes(deletedBarcodes)
+                .deletedAt(LocalDateTime.now())
+                .details("Auto-deletion of " + oldResults.size() + " records older than " + retentionDays + " days.")
+                .build();
+
+        try {
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.INSTRUMENT_EXCHANGE,
+                    "instrument.event", // Routing key thống nhất với Monitoring Service
+                    event
+            );
+        } catch (Exception e) {
+            log.error("Failed to publish auto-deletion audit event", e);
         }
     }
 }

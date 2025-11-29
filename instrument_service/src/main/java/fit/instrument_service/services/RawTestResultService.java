@@ -13,4 +13,6 @@ import fit.instrument_service.dtos.request.DeleteRawResultRequest;
 
 public interface RawTestResultService {
     void deleteRawResults(DeleteRawResultRequest request);
+
+    void executeAutoDeletion();
 }
