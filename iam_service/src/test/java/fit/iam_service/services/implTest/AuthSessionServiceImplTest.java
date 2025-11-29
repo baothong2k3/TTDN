@@ -1,4 +1,4 @@
-package fit.iam_service.services.impl;
+package fit.iam_service.services.implTest;
 
 import fit.iam_service.entities.AuthSession;
 import fit.iam_service.entities.Role;
@@ -6,6 +6,7 @@ import fit.iam_service.entities.User;
 import fit.iam_service.enums.Gender;
 import fit.iam_service.exceptions.NotFoundException;
 import fit.iam_service.repositories.AuthSessionRepository;
+import fit.iam_service.services.impl.AuthSessionServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -2,7 +2,7 @@
  * @ (#) EnvConfig.java    1.0    22/09/2025
  * Copyright (c) 2025 IUH. All rights reserved.
  */
-package fit.test_order_service.configs;/*
+package fit.test_order_service.services.impl;/*
  * @description:
  * @author: Bao Thong
  * @date: 22/09/2025

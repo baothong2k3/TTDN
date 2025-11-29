@@ -1,4 +1,4 @@
-package fit.iam_service.services.impl;
+package fit.iam_service.services.implTest;
 
 import fit.iam_service.dtos.PageResult;
 import fit.iam_service.dtos.request.*;
@@ -9,6 +9,7 @@ import fit.iam_service.exceptions.AlreadyVerifiedException;
 import fit.iam_service.repositories.*;
 import fit.iam_service.security.UserDetailsImpl;
 import fit.iam_service.services.OtpService;
+import fit.iam_service.services.impl.UserServiceImpl;
 import fit.iam_service.utils.RsaDecryptUtils;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
